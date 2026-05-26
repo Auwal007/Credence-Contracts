@@ -176,6 +176,7 @@ impl CredenceBond {
             withdrawal_requested_at: 0,
             notice_period_duration,
         };
+        
         let key = DataKey::Bond;
         e.storage().instance().set(&key, &bond);
         let tier = tiered_bond::get_tier_for_amount(amount);
