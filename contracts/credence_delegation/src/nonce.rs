@@ -59,7 +59,7 @@ fn ttl_for_expiry(e: &Env, expires_at: u64) -> u32 {
 /// # Guarantees
 /// - Called on every read and write of `DataKey::Delegation(owner, delegate, kind)`.
 /// - Prevents archival for the duration of the delegation's validity window.
-pub fn bump_delegation_ttl(e: &Env, key: &DataKey, expires_at: u64) {
+pub(crate) fn bump_delegation_ttl(e: &Env, key: &DataKey, expires_at: u64) {
     if !e.storage().persistent().has(key) {
         return;
     }
@@ -79,7 +79,7 @@ pub fn bump_delegation_ttl(e: &Env, key: &DataKey, expires_at: u64) {
 /// - Nonce NEVER resets to 0 after a restore; archival is prevented while any
 ///   active delegation exists.
 /// - Called on every read and write of `DataKey::Nonce(owner)`.
-pub fn bump_nonce_ttl(e: &Env, key: &DataKey, expires_at: u64) {
+pub(crate) fn bump_nonce_ttl(e: &Env, key: &DataKey, expires_at: u64) {
     if !e.storage().persistent().has(key) {
         return;
     }

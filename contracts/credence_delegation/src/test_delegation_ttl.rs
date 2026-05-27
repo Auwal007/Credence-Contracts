@@ -30,19 +30,19 @@ fn setup() -> (Env, CredenceDelegationClient<'static>) {
     (e, client)
 }
 
-/// Advance the ledger timestamp by `secs` seconds, also bumping the instance
-/// TTL so the contract remains accessible.
+/// Advance the ledger timestamp by `secs` seconds.
+/// Bumps the contract instance TTL first so it remains accessible after the advance.
 fn advance_time(e: &Env, contract_id: &soroban_sdk::Address, secs: u64) {
     let ledgers = (secs / 5) as u32;
-    e.ledger().with_mut(|info| {
-        info.timestamp += secs;
-        info.sequence_number += ledgers;
-    });
-    // Keep the contract instance alive across the time advance.
+    // Extend instance TTL *before* advancing so the contract stays live.
     e.as_contract(contract_id, || {
         e.storage()
             .instance()
             .extend_ttl(ledgers + 17_280, ledgers + 17_280);
+    });
+    e.ledger().with_mut(|info| {
+        info.timestamp += secs;
+        info.sequence_number += ledgers;
     });
 }
 
@@ -267,7 +267,13 @@ fn test_nonce_ttl_refreshed_on_get_nonce() {
 
     let nonce_key = DataKey::Nonce(owner.clone());
     let ttl = nonce_ttl(&e, &contract_id, &nonce_key);
-    assert!(ttl >= MIN_NONCE_TTL);
+    // After advancing 10 days (172_800 ledgers), the TTL was bumped to MIN_NONCE_TTL
+    // at the time of the bump, so the remaining TTL is MIN_NONCE_TTL - 172_800.
+    let ledgers_advanced: u32 = (10 * 24 * 3600 / 5) as u32;
+    assert!(
+        ttl >= MIN_NONCE_TTL.saturating_sub(ledgers_advanced),
+        "Nonce TTL {ttl} too low after get_nonce bump"
+    );
 }
 
 // ---------------------------------------------------------------------------
