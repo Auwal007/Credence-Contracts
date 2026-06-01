@@ -528,6 +528,9 @@ mod test_verifier;
 mod test_pausable;
 
 #[cfg(test)]
+mod test_pause_signer_invariant;
+
+#[cfg(test)]
 mod test_domain_separation;
 
 #[cfg(test)]
