@@ -86,6 +86,22 @@ enum DataKey {
 #[contract]
 pub struct CredenceDelegation;
 
+/// Maximum number of nonces that a single `invalidate_nonce_range` call may
+/// skip.  Bounding the span prevents gas-exhaustion and ensures the nonce
+/// stream advances at a predictable pace.
+///
+/// **Replay-window proof (informal):**
+/// After `invalidate_nonce_range(identity, new_nonce)` succeeds, the stored
+/// nonce is exactly `new_nonce`.  `consume_nonce` only accepts a value equal
+/// to the stored nonce, so any payload whose `nonce` field satisfies
+/// `nonce < new_nonce` will be rejected with `InvalidNonce`.  Because nonces
+/// are strictly monotone, the half-open range `[0, new_nonce)` is permanently
+/// unspendable for `identity`.  No pre-signed payload can escape invalidation
+/// regardless of when it was produced.
+///
+/// The cap `MAX_NONCE_INVALIDATION_SPAN` limits a single jump to 10 000
+/// nonces.  Larger ranges must be done in multiple calls, each bounded by
+/// the same cap.
 const MAX_NONCE_INVALIDATION_SPAN: u64 = 10_000;
 
 /// Maximum lifetime, in seconds, allowed for a newly created delegation.
@@ -135,6 +151,11 @@ impl CredenceDelegation {
         owner.require_auth();
 
         Self::validate_delegation_expiry(&e, expires_at);
+
+        // Consume nonce so direct-path and delegated-path actions share a
+        // single monotone sequence.  This ensures invalidate_nonce_range
+        // blocks both interaction types uniformly.
+        nonce::consume_nonce(&e, &owner, nonce);
 
         Self::store_delegation(&e, owner, delegate, delegation_type, expires_at)
     }
@@ -535,11 +556,6 @@ mod test_domain_separation;
 
 #[cfg(test)]
 mod test_delegation_ttl;
- 
-+#[cfg(test)]
-+pub mod test_budget_helper;
-+
-+#[cfg(test)]
-+mod test_budget_ceilings;
-+
-use credence_errors::ContractError;
+
+#[cfg(test)]
+mod test_nonce_replay;

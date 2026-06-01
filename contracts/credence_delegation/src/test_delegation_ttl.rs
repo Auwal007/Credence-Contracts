@@ -169,6 +169,7 @@ fn test_nonce_ttl_set_on_consume() {
         target: delegate.clone(),
         contract_id: contract_id.clone(),
         nonce: 0,
+        scheme: 0,
     };
     client.execute_delegated_delegate(
         &owner,
@@ -209,6 +210,7 @@ fn test_nonce_ttl_covers_delegation_lifetime() {
         target: delegate.clone(),
         contract_id: contract_id.clone(),
         nonce: 0,
+        scheme: 0,
     };
     client.execute_delegated_delegate(
         &owner,
@@ -250,6 +252,7 @@ fn test_nonce_ttl_refreshed_on_get_nonce() {
         target: delegate.clone(),
         contract_id: contract_id.clone(),
         nonce: 0,
+        scheme: 0,
     };
     client.execute_delegated_delegate(
         &owner,
@@ -294,7 +297,7 @@ fn test_delegation_ttl_bumped_on_revoke() {
 
     advance_time(&e, &contract_id, 5 * 24 * 3600);
 
-    client.revoke_delegation(&owner, &delegate, &DelegationType::Attestation, &0_u64);
+    client.revoke_delegation(&owner, &delegate, &DelegationType::Attestation, &1_u64);
 
     let key = DataKey::Delegation(owner.clone(), delegate.clone(), DelegationType::Attestation);
     let ttl = delegation_ttl(&e, &contract_id, &key);

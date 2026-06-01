@@ -361,6 +361,26 @@ pub enum ContractError {
     /// Signature verification failed for the given scheme and payload.
     VerificationFailed = 511,
 
+    /// Unknown or unsupported signature scheme tag.
+    /// Contracts: delegation
+    /// Wire-stable: do not renumber this error code.
+    UnknownScheme = 508,
+
+    /// A verifier is already registered for the given scheme tag.
+    /// Contracts: delegation
+    /// Wire-stable: do not renumber this error code.
+    VerifierAlreadyRegistered = 509,
+
+    /// No verifier is registered for the given scheme tag.
+    /// Contracts: delegation
+    /// Wire-stable: do not renumber this error code.
+    VerifierNotRegistered = 510,
+
+    /// Signature verification failed for the given scheme and payload.
+    /// Contracts: delegation
+    /// Wire-stable: do not renumber this error code.
+    VerificationFailed = 511,
+
     // --- Treasury (600-699) ---
     /// Amount argument must be strictly positive (> 0).
     /// Replaces: panic!("amount must be positive")
@@ -486,7 +506,15 @@ impl ErrorExt for ContractError {
             ContractError::ExpiryInPast
             | ContractError::DelegationNotFound
             | ContractError::AlreadyRevoked
-            | ContractError::DelegationExpiryTooLong => ErrorCategory::Delegation,
+            | ContractError::DelegationExpiryTooLong
+            | ContractError::DomainMismatch
+            | ContractError::OwnerMismatch
+            | ContractError::TargetMismatch
+            | ContractError::ContractIdMismatch
+            | ContractError::UnknownScheme
+            | ContractError::VerifierAlreadyRegistered
+            | ContractError::VerifierNotRegistered
+            | ContractError::VerificationFailed => ErrorCategory::Delegation,
 
             ContractError::AmountMustBePositive
             | ContractError::ThresholdExceedsSigners
@@ -527,10 +555,6 @@ impl ErrorExt for ContractError {
             }
             ContractError::ReentrancyDetected => "Reentrancy detected; call rejected",
             ContractError::InvalidNonce => "Nonce is replayed or out of order",
-            ContractError::DomainMismatch => "Payload domain tag does not match the expected delegated action",
-            ContractError::OwnerMismatch => "Payload owner does not match the expected caller owner",
-            ContractError::TargetMismatch => "Payload target does not match the expected action target",
-            ContractError::ContractIdMismatch => "Payload contract_id does not match the current contract address",
             ContractError::SignatureExpired => "Signature/operation deadline has passed",
             ContractError::NegativeStake => "Attester stake cannot be negative",
             ContractError::EarlyExitConfigNotSet => {
