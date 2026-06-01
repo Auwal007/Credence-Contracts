@@ -1,9 +1,3 @@
-<<<<<<< HEAD
-#![cfg(test)]
-
-mod test_bond_fuzz;
-mod test_reward_accrual_fuzz;
-=======
-#[cfg(test)]
-mod test_bond_fuzz;
->>>>>>> main
+pub mod test_bond_fuzz;
+pub mod test_reward_accrual_fuzz;
+pub mod test_slashing_tier_invariants;
