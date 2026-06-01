@@ -1,4 +1,7 @@
+#402--Contracts]-Bond--differential-test-harness-comparing-ours.rs/base.rs/theirs.rs-against-credence_bond-crate-FIX
+use soroban_sdk::{symbol_short, Address, Env};
 use soroban_sdk::{symbol_short, Address, Env, Symbol};
+main
 
 pub fn emit_bond_created_v2(e: &Env, identity: &Address, amount: i128, duration: u64, is_rolling: bool, timestamp: u64) {
     e.events().publish(
@@ -34,4 +37,6 @@ pub fn emit_duration_extended_v2(e: &Env, identity: &Address, new_duration: u64,
         (new_duration, timestamp),
     );
 }
+#402--Contracts]-Bond--differential-test-harness-comparing-ours.rs/base.rs/theirs.rs-against-credence_bond-crate-FIX
 
+main

@@ -19,7 +19,9 @@ pub fn transfer_out(e: &Env, to: &Address, amount: i128) {
     let token_addr = storage::get_token(e);
     let client = token::Client::new(e, &token_addr);
     
-    // Standard transfer out (SDK client panics on failure)
     client.transfer(&e.current_contract_address(), to, &amount);
 }
+#402--Contracts]-Bond--differential-test-harness-comparing-ours.rs/base.rs/theirs.rs-against-credence_bond-crate-FIX
 
+
+main
