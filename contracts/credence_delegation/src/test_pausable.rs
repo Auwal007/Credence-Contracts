@@ -91,9 +91,8 @@ fn test_pause_proposal_id_uniqueness_and_scoped_approval_lifecycle() {
     let proposal_a = client.pause(&s1).unwrap();
     let proposal_b = client.unpause(&s2).unwrap();
 
+    // IDs are derived from (action, epoch), so Pause and Unpause must differ.
     assert_ne!(proposal_a, proposal_b);
-    assert_eq!(proposal_a, 0);
-    assert_eq!(proposal_b, 1);
 
     client.approve_pause_proposal(&s2, &proposal_a);
     assert!(client.try_execute_pause_proposal(&proposal_b).is_err());
