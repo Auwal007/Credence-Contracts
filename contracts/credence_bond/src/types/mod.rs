@@ -1,6 +1,9 @@
-/// Bond configuration and state types.
-///
-/// Type definitions are co-located with their respective domain modules
-/// (rolling_bond, tiered_bond, etc.). This module is reserved for shared
-/// types that span multiple bond subsystems.
-pub struct Types;
+//! Protocol data types for bonds and attestations.
+//!
+//! Includes Attestation (with weight), validation, and deduplication key types.
+
+pub mod attestation;
+
+pub use attestation::{
+    Attestation, AttestationDedupKey, DEFAULT_ATTESTATION_WEIGHT, MAX_ATTESTATION_WEIGHT,
+};

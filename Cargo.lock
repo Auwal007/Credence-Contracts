@@ -509,6 +509,7 @@ name = "credence_bond"
 version = "0.1.0"
 dependencies = [
  "credence_errors",
+ "credence_math",
  "proptest",
  "soroban-sdk",
  "timelock",
@@ -518,6 +519,7 @@ dependencies = [
 name = "credence_delegation"
 version = "0.1.0"
 dependencies = [
+ "credence_bond",
  "credence_errors",
  "insta",
  "proptest",

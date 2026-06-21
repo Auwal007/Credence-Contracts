@@ -1,8 +1,11 @@
 #![no_std]
 
+mod batch;
+mod claims;
 mod early_exit_penalty;
 mod events;
 mod invariants;
+mod math;
 mod migration;
 mod nonce;
 mod rolling_bond;
@@ -10,6 +13,7 @@ mod same_ledger_liquidation_guard;
 mod slash_history;
 mod slashing;
 mod tiered_bond;
+mod upgrade_auth;
 mod weighted_attestation;
 
 #[path = "types/mod.rs"]
@@ -87,6 +91,64 @@ pub enum DataKey {
     WeightConfig,
     EarlyExitConfig,
     GraceWindow,
+    // --- Appended variants (safe per wire-stability note above) ---
+    /// Token contract used for bond deposits and claim payouts. Value: `Address`.
+    BondToken,
+    /// Configurable tier thresholds. Value: [`TierThresholds`].
+    TierThresholds,
+    /// Ledger sequence of the most recent collateral increase, used to block
+    /// same-ledger slashing. Value: `u32`.
+    LastCollateralIncreaseLedger,
+    /// Pending pull-payment claims for a user. Value: `Vec<claims::PendingClaim>`.
+    PendingClaims(Address),
+    /// Total claimable amount for a user. Value: `i128`.
+    ClaimableAmount(Address),
+    /// Monotonic claim-id counter. Value: `u64`.
+    ClaimCounter,
+    /// Individual claim looked up by id. Value: [`claims::PendingClaim`].
+    ClaimById(u64),
+    /// Upgrade-authorization namespace, sub-keyed by [`UpgradeKey`].
+    Upgrade(UpgradeKey),
+}
+
+/// Sub-key namespace for upgrade-authorization storage entries.
+///
+/// All upgrade-related state is stored under [`DataKey::Upgrade`] with one of
+/// these discriminators so the upgrade subsystem owns a single top-level key.
+#[contracttype]
+#[derive(Clone)]
+pub enum UpgradeKey {
+    /// Per-address upgrade authorization record. Value: `upgrade_auth::UpgradeAuthorization`.
+    Auth(Address),
+    /// List of authorized upgrader addresses. Value: `Vec<Address>`.
+    AuthorizedUpgraders,
+    /// Current implementation hash. Value: `Bytes`.
+    Implementation,
+    /// Upgrade admin address. Value: `Address`.
+    Admin,
+    /// Pending (two-step) upgrade admin address. Value: `Address`.
+    PndgUpgrAdmin,
+    /// Upgrade proposal by id. Value: `upgrade_auth::UpgradeProposal`.
+    Proposal(u64),
+    /// Monotonic upgrade-proposal id counter. Value: `u64`.
+    NextProposalId,
+    /// Upgrade history log. Value: `Vec<upgrade_auth::UpgradeRecord>`.
+    History,
+}
+
+/// Configurable bonded-amount thresholds that map an amount to a [`BondTier`].
+///
+/// Read by [`tiered_bond::get_tier_for_amount`]; when unset, hard-coded
+/// `TIER_*_MAX` defaults are used.
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct TierThresholds {
+    /// Upper bound (exclusive) for the Bronze tier.
+    pub bronze_max: i128,
+    /// Upper bound (exclusive) for the Silver tier.
+    pub silver_max: i128,
+    /// Upper bound (exclusive) for the Gold tier.
+    pub gold_max: i128,
 }
 
 const STORAGE_TTL_EXTEND_TO: u32 = 31_536_000;
@@ -221,7 +283,7 @@ impl CredenceBond {
             return None;
         }
         let available_amount = bond.bonded_amount.saturating_sub(bond.slashed_amount);
-        let tier = tiered_bond::get_tier_for_amount(bond.bonded_amount);
+        let tier = tiered_bond::get_tier_for_amount(&e, bond.bonded_amount);
         Some(BondStateView {
             identity: bond.identity,
             bonded_amount: bond.bonded_amount,
@@ -433,7 +495,7 @@ impl CredenceBond {
         let key = DataKey::Bond;
         e.storage().instance().set(&key, &bond);
         bump_instance_ttl(&e);
-        let tier = tiered_bond::get_tier_for_amount(amount);
+        let tier = tiered_bond::get_tier_for_amount(&e, amount);
         tiered_bond::emit_tier_change_if_needed(&e, &identity, BondTier::Bronze, tier);
         invariants::assert_self_consistent(&e);
         bond
@@ -793,7 +855,7 @@ impl CredenceBond {
         );
         early_exit_penalty::emit_penalty_event(&e, &bond.identity, amount, penalty, &treasury);
 
-        let old_tier = tiered_bond::get_tier_for_amount(bond.bonded_amount);
+        let old_tier = tiered_bond::get_tier_for_amount(&e, bond.bonded_amount);
         bond.bonded_amount = bond
             .bonded_amount
             .checked_sub(amount)
@@ -801,7 +863,7 @@ impl CredenceBond {
         if bond.slashed_amount > bond.bonded_amount {
             panic_with_error!(e, ContractError::SlashExceedsBond);
         }
-        let new_tier = tiered_bond::get_tier_for_amount(bond.bonded_amount);
+        let new_tier = tiered_bond::get_tier_for_amount(&e, bond.bonded_amount);
         tiered_bond::emit_tier_change_if_needed(&e, &bond.identity, old_tier, new_tier);
 
         e.storage().instance().set(&key, &bond);
@@ -927,8 +989,8 @@ impl CredenceBond {
 
     /// Get current tier for the bond's bonded amount.
     pub fn get_tier(e: Env) -> BondTier {
-        let bond = Self::get_identity_state(e);
-        tiered_bond::get_tier_for_amount(bond.bonded_amount)
+        let bond = Self::get_identity_state(e.clone());
+        tiered_bond::get_tier_for_amount(&e, bond.bonded_amount)
     }
 
     /// Slash a bond and return the updated bond state.
